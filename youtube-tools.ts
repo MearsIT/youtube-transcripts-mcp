@@ -26,14 +26,10 @@ export function registerYouTubeCaptionTools(server: McpServer) {
         outputDir: z.string().optional().describe("Directory to save files (optional, defaults to H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt)"),
         filename: z.string().optional().describe("Base filename for saved files (optional, auto-generated if not provided)"),
         includeRawCaptions: z.boolean().optional().describe("Whether to save raw VTT file alongside cleaned text (default: false)")
-      }
+      } as any
     },
-    async ({ url, outputDir, filename, includeRawCaptions = false }: {
-      url: string;
-      outputDir?: string;
-      filename?: string;
-      includeRawCaptions?: boolean;
-    }) => {
+    async (args: any) => {
+      const { url, outputDir, filename, includeRawCaptions = false } = args;
       const requestId = Math.random().toString(36).substring(2, 15);
 
       try {
@@ -84,7 +80,7 @@ export function registerYouTubeCaptionTools(server: McpServer) {
 
         return {
           content: [{
-            type: "text",
+            type: "text" as const,
             text: `**YouTube Caption Processing Complete**
 
 **Video URL:** ${url}
@@ -112,7 +108,7 @@ ${captionText.length > 2000 ? captionText.substring(0, 2000) + '...\n\n[Text tru
 
         return {
           content: [{
-            type: "text",
+            type: "text" as const,
             text: `**YouTube Caption Processing Failed**
 
 Error: ${errorMessage}
@@ -139,16 +135,17 @@ Please ensure:
       inputSchema: {
         url: z.string().describe("YouTube video URL"),
         outputDir: z.string().optional().describe("Directory to save VTT file (optional)")
-      }
+      } as any
     },
-    async ({ url, outputDir }: { url: string; outputDir?: string }) => {
+    async (args: any) => {
+      const { url, outputDir } = args;
       try {
         const vttPath = await downloadYouTubeCaptions(url, outputDir);
         const videoTitle = extractVideoTitle(vttPath);
 
         return {
           content: [{
-            type: "text",
+            type: "text" as const,
             text: `**Caption Download Complete**
 
 Video: ${videoTitle || 'Unknown'}
@@ -159,7 +156,7 @@ VTT file saved to: ${vttPath}`
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         return {
           content: [{
-            type: "text",
+            type: "text" as const,
             text: `Caption download failed: ${errorMessage}`
           }],
           isError: true
@@ -177,9 +174,10 @@ VTT file saved to: ${vttPath}`
       inputSchema: {
         vttFilePath: z.string().describe("Path to the VTT file to clean"),
         outputPath: z.string().optional().describe("Path for cleaned text output (optional)")
-      }
+      } as any
     },
-    async ({ vttFilePath, outputPath }: { vttFilePath: string; outputPath?: string }) => {
+    async (args: any) => {
+      const { vttFilePath, outputPath } = args;
       try {
         const cleanedCaptions = await cleanVttFile(vttFilePath, outputPath);
         const captionText = joinCaptions(cleanedCaptions);
@@ -187,7 +185,7 @@ VTT file saved to: ${vttPath}`
 
         return {
           content: [{
-            type: "text",
+            type: "text" as const,
             text: `**VTT Cleaning Complete**
 
 Input file: ${vttFilePath}
@@ -202,8 +200,56 @@ ${captionText.substring(0, 500)}${captionText.length > 500 ? '...' : ''}`
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         return {
           content: [{
-            type: "text",
+            type: "text" as const,
             text: `VTT cleaning failed: ${errorMessage}`
+          }],
+          isError: true
+        };
+      }
+    }
+  );
+
+  // New tool: Save formatted transcript
+  server.registerTool(
+    "save-formatted-transcript",
+    {
+      title: "Save Formatted Transcript",
+      description: "Save a formatted transcript (e.g., markdown formatted by Claude) to the filesystem",
+      inputSchema: {
+        content: z.string().describe("The formatted content to save"),
+        filename: z.string().describe("Filename for the saved file (e.g., 'my_video.md')"),
+        outputDir: z.string().optional().describe("Directory to save file (optional, defaults to H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt)"),
+        videoTitle: z.string().optional().describe("Video title for organization (optional)"),
+        videoUrl: z.string().optional().describe("Video URL for reference (optional)")
+      } as any
+    },
+    async (args: any) => {
+      const { content, filename, outputDir, videoTitle, videoUrl } = args;
+      try {
+        logger.info("Saving formatted transcript", { filename, outputDir });
+
+        const savedPath = await saveToFilesystem(content, filename, outputDir);
+
+        logger.info("Formatted transcript saved successfully", { path: savedPath });
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: `**Formatted Transcript Saved**
+
+${videoTitle ? `**Video:** ${videoTitle}\n` : ''}${videoUrl ? `**URL:** ${videoUrl}\n` : ''}
+**File:** [${savedPath}](file:///${savedPath.replace(/\\/g, '/')})
+**Size:** ${content.length.toLocaleString()} characters
+
+Your formatted transcript has been saved to your Obsidian folder!`
+          }]
+        };
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Failed to save formatted transcript: ${errorMessage}`
           }],
           isError: true
         };
