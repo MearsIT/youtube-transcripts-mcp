@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "youtube-transcripts": {
+      "command": "node",
+      "args": ["build/index.js"]
+    }
+  }
+}

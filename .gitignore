@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Local configuration
+.claude/
+
+# Build artifacts (optional - keeping build/ for distribution)
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
