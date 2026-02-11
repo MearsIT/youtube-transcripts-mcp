@@ -40,13 +40,18 @@ export function registerYouTubeCaptionTools(server) {
             // Step 3: Generate filename if not provided
             const videoTitle = extractVideoTitle(vttPath);
             const baseFilename = filename || createTimestampedFilename(videoTitle || 'youtube_captions');
-            // Step 4: Save cleaned text
-            const cleanedTextPath = await saveToFilesystem(captionText, baseFilename, outputDir);
-            // Step 5: Save raw VTT if requested
+            // Step 4: Save cleaned text to session folder (not main folder)
+            // Extract session folder from vttPath
+            const { dirname } = await import('path');
+            const sessionFolder = dirname(vttPath);
+            const cleanedTextPath = await saveToFilesystem(captionText, baseFilename, sessionFolder // Save to session folder, not main folder
+            );
+            // Step 5: Save raw VTT if requested (also in session folder)
             let rawVttPath;
             if (includeRawCaptions) {
                 const rawFilename = baseFilename.replace('.txt', '_raw.vtt');
-                rawVttPath = await saveToFilesystem(await import('fs').then(fs => fs.promises.readFile(vttPath, 'utf-8')), rawFilename, outputDir);
+                rawVttPath = await saveToFilesystem(await import('fs').then(fs => fs.promises.readFile(vttPath, 'utf-8')), rawFilename, sessionFolder // Save to session folder
+                );
             }
             logger.info("YouTube caption processing completed", {
                 requestId,
@@ -63,15 +68,16 @@ export function registerYouTubeCaptionTools(server) {
 **Video Title:** ${videoTitle || 'Unknown'}
 
 **Processing Statistics:**
-- Original VTT file: ${vttPath}
 - Cleaned lines: ${stats.totalLines}
 - Total words: ${stats.totalWords.toLocaleString()}
 - Total characters: ${stats.totalCharacters.toLocaleString()}
-- Average words per line: ${stats.averageWordsPerLine}
 
-**Files Saved to:** ${outputDir || 'H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt'}
-- Cleaned text: [${cleanedTextPath}](file:///${cleanedTextPath.replace(/\\/g, '/')})
-${rawVttPath ? `- Raw VTT: ${rawVttPath}` : ''}
+**Files Saved:**
+- 📁 Session folder: ${sessionFolder}
+- 📄 Cleaned text: [${cleanedTextPath}](file:///${cleanedTextPath.replace(/\\/g, '/')})
+${rawVttPath ? `- 📄 Raw VTT: ${rawVttPath}` : ''}
+
+---
 
 **Full Cleaned Text:**
 ${captionText.length > 2000 ? captionText.substring(0, 2000) + '...\n\n[Text truncated - full content saved to file]' : captionText}`

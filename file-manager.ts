@@ -24,8 +24,9 @@ export async function saveToFilesystem(
     const saveDir = outputDir || DEFAULT_CAPTIONS_DIR;
     await fs.mkdir(saveDir, { recursive: true });
 
-    // Ensure filename has .txt extension
-    const finalFilename = filename.endsWith('.txt') ? filename : `${filename}.txt`;
+    // Ensure filename has an extension (default to .txt if none provided)
+    const hasExtension = /\.[a-zA-Z0-9]+$/.test(filename);
+    const finalFilename = hasExtension ? filename : `${filename}.txt`;
     const fullPath = join(saveDir, finalFilename);
 
     // Save file
