@@ -15,7 +15,7 @@ export function registerYouTubeCaptionTools(server) {
         title: "Process YouTube Captions",
         description: "Download, clean, save, and summarise YouTube video captions",
         inputSchema: {
-            url: z.string().describe("YouTube video URL"),
+            url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
             outputDir: z.string().optional().describe("Directory to save files (optional, defaults to H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt)"),
             filename: z.string().optional().describe("Base filename for saved files (optional, auto-generated if not provided)"),
             includeRawCaptions: z.boolean().optional().describe("Whether to save raw VTT file alongside cleaned text (default: false)")
@@ -110,7 +110,7 @@ Please ensure:
         title: "Download YouTube Captions",
         description: "Download raw VTT caption files from YouTube videos",
         inputSchema: {
-            url: z.string().describe("YouTube video URL"),
+            url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
             outputDir: z.string().optional().describe("Directory to save VTT file (optional)")
         }
     }, async (args) => {
