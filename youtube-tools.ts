@@ -23,7 +23,7 @@ export function registerYouTubeCaptionTools(server: McpServer) {
       description: "Download, clean, save, and summarise YouTube video captions",
       inputSchema: {
         url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
-        outputDir: z.string().optional().describe("Directory to save files (optional, defaults to H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt)"),
+        outputDir: z.string().optional().describe("Directory to save files (optional, defaults to /home/jandal/Documents/Obsidian/METJM/Transcripts/yt)"),
         filename: z.string().optional().describe("Base filename for saved files (optional, auto-generated if not provided)"),
         includeRawCaptions: z.boolean().optional().describe("Whether to save raw VTT file alongside cleaned text (default: false)")
       } as any
@@ -223,7 +223,7 @@ ${captionText.substring(0, 500)}${captionText.length > 500 ? '...' : ''}`
       inputSchema: {
         content: z.string().describe("The formatted content to save"),
         filename: z.string().describe("Filename for the saved file (e.g., 'my_video.md')"),
-        outputDir: z.string().optional().describe("Directory to save file (optional, defaults to H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt)"),
+        outputDir: z.string().optional().describe("Directory to save file (optional, defaults to /home/jandal/Documents/Obsidian/METJM/Transcripts/yt)"),
         videoTitle: z.string().optional().describe("Video title for organization (optional)"),
         videoUrl: z.string().optional().describe("Video URL for reference (optional)")
       } as any

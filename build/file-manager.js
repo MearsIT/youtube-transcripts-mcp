@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 // Default output directory - Obsidian transcripts folder
-const DEFAULT_CAPTIONS_DIR = 'H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt';
+const DEFAULT_CAPTIONS_DIR = '/home/jandal/Documents/Obsidian/METJM/Transcripts/yt';
 /**
  * Save cleaned captions to the filesystem
  */

@@ -5,7 +5,7 @@ import { join, resolve } from 'path';
 import { randomBytes } from 'crypto';
 
 // Default output directory - Obsidian transcripts folder
-const DEFAULT_CAPTIONS_DIR = 'H:\\Documents\\Obsidian\\METJM\\Transcripts\\yt';
+const DEFAULT_CAPTIONS_DIR = '/home/jandal/Documents/Obsidian/METJM/Transcripts/yt';
 
 const execAsync = promisify(exec);
 
@@ -82,10 +82,25 @@ export async function downloadYouTubeCaptions(url: string, outputDir?: string): 
     logger.info('Starting YouTube caption download', { url, workingDir, sessionId });
 
     // Execute yt-dlp command with options for English captions
-    const command = `yt-dlp --write-auto-sub --sub-lang "en.*" --skip-download --no-cache-dir --force-write-archive --output "${workingDir}/%(title)s_${metadata.videoId}.%(ext)s" "${url}"`;
+    // Add retry logic and user agent to avoid rate limiting
+    // Use --ignore-errors to continue even if some subtitle variants fail
+    const command = `yt-dlp --write-auto-sub --sub-lang "en" --skip-download --no-cache-dir --ignore-errors --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" --extractor-retries 3 --output "${workingDir}/%(title)s_${metadata.videoId}.%(ext)s" "${url}"`;
 
     logger.info('Executing yt-dlp command', { command });
-    const { stdout, stderr } = await execAsync(command, { timeout: 60000 }); // 60 second timeout
+    let stdout = '';
+    let stderr = '';
+
+    try {
+      const result = await execAsync(command, { timeout: 60000 }); // 60 second timeout
+      stdout = result.stdout;
+      stderr = result.stderr;
+    } catch (error: any) {
+      // Even if yt-dlp exits with error code, it might have downloaded some captions
+      // Check if files were created successfully
+      stdout = error.stdout || '';
+      stderr = error.stderr || '';
+      logger.info('yt-dlp completed with errors, checking for downloaded files', { stderr });
+    }
 
     if (stderr) {
       logger.info('yt-dlp stderr output', { stderr });
