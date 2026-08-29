@@ -110,7 +110,13 @@ const verifySessionFiles = () => {
   console.log(`✓ Session folder created: ${sessionName}`);
 
   const sessionPath = join(TRANSCRIPTS_DIR, sessionName);
-  const sessionFiles = readdirSync(sessionPath);
+  let sessionFiles;
+  try {
+    sessionFiles = readdirSync(sessionPath);
+  } catch (err) {
+    fail(`Cannot read session folder ${sessionPath}: ${err.message}`);
+    return finish(1);
+  }
 
   const vttFile = sessionFiles.find(f => f.endsWith('.vtt') && f.includes(`_${videoId}.en`));
   if (!vttFile) {
@@ -177,8 +183,15 @@ server.stdout.on('data', (data) => {
     } catch {
       return;
     }
-    if (message.id === 1 && message.result) sendToolCall();
-    else if (message.id === 2) handleToolResponse(message);
+    if (message.id === 1) {
+      if (message.error) {
+        fail(`Initialize JSON-RPC error: ${JSON.stringify(message.error)}`);
+        return finish(1);
+      }
+      if (message.result) sendToolCall();
+    } else if (message.id === 2) {
+      handleToolResponse(message);
+    }
   });
 });
 
