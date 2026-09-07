@@ -137,14 +137,14 @@ Please ensure:
     "create-youtube-summary-note",
     {
       title: "Create YouTube Summary Note",
-      description: "Download YouTube captions and bundle with formatting instructions for Obsidian reference note creation",
+      description: "Download YouTube captions and bundle with formatting instructions for Obsidian youtube-transcript note creation",
       inputSchema: {
         url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
-        outputDir: z.string().optional().describe("Note output directory (default: /home/jandal/Documents/Obsidian/METJM/Reference)")
+        outputDir: z.string().optional().describe("Note output directory (default: /home/jandal/Documents/Obsidian/METJM/Media/YouTube)")
       } as any
     },
     async (args: any) => {
-      const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Reference" } = args;
+      const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Media/YouTube" } = args;
       const requestId = Math.random().toString(36).substring(2, 15);
 
       try {
@@ -159,14 +159,33 @@ Please ensure:
         const stats = getCaptionStats(cleanedCaptions);
         const videoTitle = extractVideoTitle(vttPath);
 
-        // Step 3: Get formatting instructions (skill file or embedded fallback)
+        // Step 3: Save cleaned text to session folder (same pattern as process-youtube-captions)
+        const { dirname } = await import('path');
+        let savedTxtPath: string | null = null;
+        try {
+          savedTxtPath = await saveToFilesystem(
+            captionText,
+            createTimestampedFilename(videoTitle || 'youtube_captions'),
+            dirname(vttPath)
+          );
+        } catch (txtError) {
+          logger.error("Failed to save cleaned transcript txt", txtError instanceof Error ? txtError : new Error(String(txtError)));
+          // Non-fatal: note creation must not be blocked
+        }
+
+        // Step 4: Suggested note filename (local time, date+time prefix, kebab title)
+        const suggestedFilename = buildSuggestedNoteFilename(videoTitle || 'youtube video');
+
+        // Step 5: Get formatting instructions (skill file or embedded fallback)
         const skillInstructions = await extractSkillInstructions();
 
         logger.info("YouTube summary note bundle created", {
           requestId,
           videoTitle,
           stats,
-          outputDir
+          outputDir,
+          savedTxtPath,
+          suggestedFilename
         });
 
         return {
@@ -182,10 +201,13 @@ Please ensure:
 - Total words: ${stats.totalWords.toLocaleString()}
 - Total characters: ${stats.totalCharacters.toLocaleString()}
 
+**Saved Transcript:** ${savedTxtPath || '(txt save failed - see logs)'}
+
 **Instructions for Claude:**
 ${skillInstructions}
 
 **Target Directory:** ${outputDir}
+**Suggested Filename:** ${suggestedFilename}
 
 ---
 
@@ -308,6 +330,23 @@ Your formatted transcript has been saved to your Obsidian folder!`
       }
     }
   );
+}
+
+/**
+ * Build suggested note filename: YYYY-MM-DD_HHMM-<kebab-title>.md (local time)
+ */
+function buildSuggestedNoteFilename(title: string): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const time = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const kebab = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/g, '');
+  return `${date}_${time}-${kebab || 'video'}.md`;
 }
 
 /**

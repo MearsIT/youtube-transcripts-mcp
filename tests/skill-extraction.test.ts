@@ -5,7 +5,7 @@ import { tmpdir } from 'os';
 import {
   extractSkillInstructions,
   extractInstructionsFromSkill,
-  FALLBACK_REFERENCE_INSTRUCTIONS,
+  FALLBACK_NOTE_INSTRUCTIONS,
   getDefaultSkillPath
 } from '../skill-extractor.js';
 
@@ -71,6 +71,39 @@ Main ideas and definitions.
 - [[Related references]]
 \`\`\`
 
+### \`youtube-transcript\`
+
+Used for processed YouTube video transcripts and summaries.
+
+\`\`\`markdown
+# [Video Title]
+
+## Overview/Summary
+Brief summary of the video content and main takeaways.
+
+## Video Details
+- **Channel**: [Channel Name]
+- **URL**: [YouTube URL]
+- **Duration**: [Duration]
+- **Published**: [Date]
+
+## Key Topics
+- Topic 1
+- Topic 2
+
+## Main Content
+Structured summary or processed transcript content.
+
+## Key Quotes
+> Notable quotes from the video
+
+## Insights/Notes
+Personal observations and connections.
+
+## Related Notes
+- [[Related topic]]
+\`\`\`
+
 ---
 
 ## Common Folder Locations
@@ -78,6 +111,7 @@ Main ideas and definitions.
 | Note type | Folder |
 |---|---|
 | \`reference\` | \`Reference/\` |
+| \`youtube-transcript\` | \`Media/YouTube/\` |
 `;
 
 const MALFORMED_SKILL_CONTENT = `---
@@ -86,7 +120,7 @@ name: some-other-skill
 
 # Unrelated Skill
 
-This file has no reference note sections at all.
+This file has no youtube-transcript note sections at all.
 `;
 
 let tempDir: string;
@@ -106,18 +140,35 @@ describe('getDefaultSkillPath', () => {
 });
 
 describe('extractInstructionsFromSkill', () => {
-  it('extracts frontmatter template, field rules, reference template, naming, and folder from valid skill content', () => {
+  it('extracts frontmatter template, field rules, youtube-transcript template, naming, and folder from valid skill content', () => {
     const result = extractInstructionsFromSkill(SAMPLE_SKILL_CONTENT);
 
     expect(result).not.toBeNull();
     expect(result).toContain('title: [Note Title]');
     expect(result).toContain('**Frontmatter Field Rules**');
-    expect(result).toContain('## Overview/Summary');
-    expect(result).toContain('descriptive-name.md');
-    expect(result).toContain('**Target Folder**: Reference/');
+    expect(result).toContain('## Video Details');
+    expect(result).toContain('## Key Topics');
+    expect(result).toContain('## Main Content');
+    expect(result).toContain('## Key Quotes');
+    expect(result).toContain('## Insights/Notes');
+    expect(result).toContain('**Target Folder**: Media/YouTube/');
   });
 
-  it('returns null for content without reference note sections', () => {
+  it('prepends the no-questions automation header', () => {
+    const result = extractInstructionsFromSkill(SAMPLE_SKILL_CONTENT);
+
+    expect(result).toMatch(/^Create the note immediately\. Do NOT ask the user any questions/);
+    expect(result).toContain('Do NOT use any other skill or template');
+  });
+
+  it('injects the date-prefix naming rule instead of the skill naming line', () => {
+    const result = extractInstructionsFromSkill(SAMPLE_SKILL_CONTENT);
+
+    expect(result).toContain('YYYY-MM-DD_HHMM-kebab-case-title.md');
+    expect(result).not.toContain('no date prefix');
+  });
+
+  it('returns null for content without youtube-transcript note sections', () => {
     expect(extractInstructionsFromSkill(MALFORMED_SKILL_CONTENT)).toBeNull();
   });
 
@@ -134,14 +185,14 @@ describe('extractSkillInstructions', () => {
     const result = await extractSkillInstructions(skillPath);
 
     expect(result).toContain('title: [Note Title]');
-    expect(result).toContain('**Target Folder**: Reference/');
-    expect(result).not.toBe(FALLBACK_REFERENCE_INSTRUCTIONS);
+    expect(result).toContain('**Target Folder**: Media/YouTube/');
+    expect(result).not.toBe(FALLBACK_NOTE_INSTRUCTIONS);
   });
 
   it('returns embedded fallback when skill file is missing', async () => {
     const result = await extractSkillInstructions(join(tempDir, 'does-not-exist.md'));
 
-    expect(result).toBe(FALLBACK_REFERENCE_INSTRUCTIONS);
+    expect(result).toBe(FALLBACK_NOTE_INSTRUCTIONS);
   });
 
   it('returns embedded fallback when skill file exists but extraction fails', async () => {
@@ -150,7 +201,7 @@ describe('extractSkillInstructions', () => {
 
     const result = await extractSkillInstructions(skillPath);
 
-    expect(result).toBe(FALLBACK_REFERENCE_INSTRUCTIONS);
+    expect(result).toBe(FALLBACK_NOTE_INSTRUCTIONS);
   });
 
   it('returns embedded fallback when skill file is unreadable (permission denied)', async () => {
@@ -160,20 +211,26 @@ describe('extractSkillInstructions', () => {
 
     const result = await extractSkillInstructions(skillPath);
 
-    expect(result).toBe(FALLBACK_REFERENCE_INSTRUCTIONS);
+    expect(result).toBe(FALLBACK_NOTE_INSTRUCTIONS);
 
     await fs.chmod(skillPath, 0o644);
   });
 });
 
-describe('FALLBACK_REFERENCE_INSTRUCTIONS', () => {
-  it('contains the required reference note structure elements', () => {
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('type: reference');
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('## Overview/Summary');
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('## Key Concepts');
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('## Related Notes');
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('kebab-case');
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('NO date prefix');
-    expect(FALLBACK_REFERENCE_INSTRUCTIONS).toContain('Reference/');
+describe('FALLBACK_NOTE_INSTRUCTIONS', () => {
+  it('contains the required youtube-transcript note structure elements', () => {
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('type: youtube-transcript');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Overview/Summary');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Video Details');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Main Content');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Key Quotes');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Related Notes');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('Media/YouTube/');
+  });
+
+  it('contains the date-prefix naming rule and no-questions directive', () => {
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('YYYY-MM-DD_HHMM-kebab-case-title.md');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toMatch(/^Create the note immediately\. Do NOT ask the user any questions/);
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('Do NOT use any other skill or template');
   });
 });

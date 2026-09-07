@@ -130,17 +130,7 @@ export async function downloadYouTubeCaptions(url: string, outputDir?: string): 
     const vttPath = join(workingDir, vttFile);
     logger.info('Caption download completed', { vttFile: vttPath, sessionId });
 
-    // Schedule cleanup of session directory after successful completion
-    // Give some time for file to be processed before cleanup
-    setTimeout(async () => {
-      try {
-        await cleanupSessionDirectory(workingDir);
-        logger.info('Session directory cleaned up', { workingDir, sessionId });
-      } catch (cleanupError) {
-        logger.error('Failed to cleanup session directory', cleanupError instanceof Error ? cleanupError : new Error('Unknown cleanup error'));
-      }
-    }, 300000); // 5 minutes delay
-
+    // Session directory persists (vtt + cleaned txt are kept for later reference)
     return vttPath;
 
   } catch (error) {
@@ -177,23 +167,3 @@ export function extractVideoId(url: string): string | null {
   return null;
 }
 
-/**
- * Cleanup session directory and its contents
- */
-async function cleanupSessionDirectory(sessionDir: string): Promise<void> {
-  try {
-    const stat = await fs.stat(sessionDir);
-    if (stat.isDirectory()) {
-      const files = await fs.readdir(sessionDir);
-      // Remove all files in directory
-      for (const file of files) {
-        const filePath = join(sessionDir, file);
-        await fs.unlink(filePath);
-      }
-      // Remove directory itself
-      await fs.rmdir(sessionDir);
-    }
-  } catch (error) {
-    // Ignore cleanup errors - they're not critical
-  }
-}
