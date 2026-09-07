@@ -2,6 +2,7 @@ import { z } from "zod";
 import { downloadYouTubeCaptions } from "./youtube-downloader.js";
 import { cleanVttFile, joinCaptions, getCaptionStats } from "./caption-cleaner.js";
 import { saveToFilesystem, createTimestampedFilename } from "./file-manager.js";
+import { extractSkillInstructions } from "./skill-extractor.js";
 /**
  * Register YouTube caption processing tools
  */
@@ -100,6 +101,79 @@ Please ensure:
 2. The YouTube URL is valid
 3. The video has English captions available
 4. You have write permissions to the output directory`
+                    }],
+                isError: true
+            };
+        }
+    });
+    // Self-contained tool: Download captions and bundle with note formatting instructions
+    server.registerTool("create-youtube-summary-note", {
+        title: "Create YouTube Summary Note",
+        description: "Download YouTube captions and bundle with formatting instructions for Obsidian reference note creation",
+        inputSchema: {
+            url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
+            outputDir: z.string().optional().describe("Note output directory (default: /home/jandal/Documents/Obsidian/METJM/Reference)")
+        }
+    }, async (args) => {
+        const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Reference" } = args;
+        const requestId = Math.random().toString(36).substring(2, 15);
+        try {
+            logger.info("Starting YouTube summary note creation", { requestId, url, outputDir });
+            // Step 1: Download captions
+            const vttPath = await downloadYouTubeCaptions(url);
+            // Step 2: Clean captions
+            const cleanedCaptions = await cleanVttFile(vttPath);
+            const captionText = joinCaptions(cleanedCaptions);
+            const stats = getCaptionStats(cleanedCaptions);
+            const videoTitle = extractVideoTitle(vttPath);
+            // Step 3: Get formatting instructions (skill file or embedded fallback)
+            const skillInstructions = await extractSkillInstructions();
+            logger.info("YouTube summary note bundle created", {
+                requestId,
+                videoTitle,
+                stats,
+                outputDir
+            });
+            return {
+                content: [{
+                        type: "text",
+                        text: `**YouTube Caption Processing Complete**
+
+**Video URL:** ${url}
+**Video Title:** ${videoTitle || 'Unknown'}
+
+**Processing Statistics:**
+- Cleaned lines: ${stats.totalLines}
+- Total words: ${stats.totalWords.toLocaleString()}
+- Total characters: ${stats.totalCharacters.toLocaleString()}
+
+**Instructions for Claude:**
+${skillInstructions}
+
+**Target Directory:** ${outputDir}
+
+---
+
+**Full Cleaned Text:**
+${captionText}`
+                    }]
+            };
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            logger.error("YouTube summary note creation failed", error instanceof Error ? error : new Error(errorMessage));
+            return {
+                content: [{
+                        type: "text",
+                        text: `**YouTube Summary Note Creation Failed**
+
+Error: ${errorMessage}
+Request ID: ${requestId}
+
+Please ensure:
+1. yt-dlp is installed and accessible
+2. The YouTube URL is valid
+3. The video has English captions available`
                     }],
                 isError: true
             };

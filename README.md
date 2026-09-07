@@ -77,6 +77,7 @@ Close and reopen Claude Desktop for the changes to take effect.
 | `process-youtube-captions` | Download, clean, save, and summarize YouTube video captions |
 | `clean-vtt-file` | Clean an existing VTT file to extract readable text |
 | `save-formatted-transcript` | Save a formatted transcript to the filesystem |
+| `create-youtube-summary-note` | Download captions and bundle with Obsidian note formatting instructions |
 | `health-check` | Check if the MCP server and dependencies are working properly |
 
 ## Usage Examples

@@ -61,6 +61,7 @@ server.registerTool(
 - \`process-youtube-captions\`: Complete caption processing workflow (download, clean, save)
 - \`clean-vtt-file\`: Clean existing VTT files
 - \`save-formatted-transcript\`: Save formatted transcripts to filesystem
+- \`create-youtube-summary-note\`: Bundle captions with note formatting instructions
 - \`health-check\`: This health check tool
 
 **Server Info:**
@@ -103,7 +104,7 @@ async function main() {
     logger.info("YouTube Transcripts MCP Server running", {
       serverName: "youtube-transcripts",
       version: "1.0.0",
-      toolCount: 4  // process-youtube-captions, clean-vtt-file, save-formatted-transcript, health-check
+      toolCount: 5  // process-youtube-captions, clean-vtt-file, save-formatted-transcript, create-youtube-summary-note, health-check
     });
 
   } catch (error: unknown) {
