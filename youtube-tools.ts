@@ -207,7 +207,7 @@ Please ensure:
 ${skillInstructions}
 
 **Target Directory:** ${outputDir}
-**Suggested Filename:** ${suggestedFilename}
+**Required Note Path (save the note to EXACTLY this path, do not rename):** ${outputDir.replace(/\/+$/, '')}/${suggestedFilename}
 
 ---
 

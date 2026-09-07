@@ -9,7 +9,7 @@ const logger = {
  * Directive prepended to all instruction bundles: the note must be created
  * fully automatically, with no questions, confirmation, or other skills.
  */
-const AUTOMATION_HEADER = `Create the note immediately. Do NOT ask the user any questions or seek confirmation. Do NOT use any other skill or template. Use the target directory and suggested filename provided in the tool response.`;
+const AUTOMATION_HEADER = `Create the note immediately. Do NOT ask the user any questions or seek confirmation. Do NOT use any other skill or template. Use the target directory and suggested filename provided in the tool response EXACTLY as given — the filename MUST keep its YYYY-MM-DD_HHMM date-time prefix. Do NOT rename, reformat, or shorten the filename.`;
 /**
  * Naming rule injected in place of the skill's own (no-date-prefix) rule.
  */
