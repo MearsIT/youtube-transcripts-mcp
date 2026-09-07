@@ -105,40 +105,6 @@ Please ensure:
             };
         }
     });
-    // Utility tool: Download captions only
-    server.registerTool("download-youtube-captions", {
-        title: "Download YouTube Captions",
-        description: "Download raw VTT caption files from YouTube videos",
-        inputSchema: {
-            url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
-            outputDir: z.string().optional().describe("Directory to save VTT file (optional)")
-        }
-    }, async (args) => {
-        const { url, outputDir } = args;
-        try {
-            const vttPath = await downloadYouTubeCaptions(url, outputDir);
-            const videoTitle = extractVideoTitle(vttPath);
-            return {
-                content: [{
-                        type: "text",
-                        text: `**Caption Download Complete**
-
-Video: ${videoTitle || 'Unknown'}
-VTT file saved to: ${vttPath}`
-                    }]
-            };
-        }
-        catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            return {
-                content: [{
-                        type: "text",
-                        text: `Caption download failed: ${errorMessage}`
-                    }],
-                isError: true
-            };
-        }
-    });
     // Utility tool: Clean existing VTT file
     server.registerTool("clean-vtt-file", {
         title: "Clean VTT Caption File",

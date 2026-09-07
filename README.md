@@ -75,8 +75,8 @@ Close and reopen Claude Desktop for the changes to take effect.
 | Tool Name | Description |
 |-----------|-------------|
 | `process-youtube-captions` | Download, clean, save, and summarize YouTube video captions |
-| `download-youtube-captions` | Download raw VTT caption files from YouTube videos |
 | `clean-vtt-file` | Clean an existing VTT file to extract readable text |
+| `save-formatted-transcript` | Save a formatted transcript to the filesystem |
 | `health-check` | Check if the MCP server and dependencies are working properly |
 
 ## Usage Examples
@@ -93,17 +93,12 @@ Claude will:
 4. Generate summary with reading time
 5. Return the transcript with statistics
 
-### Example 2: Download Captions Only
-
-Ask Claude:
-> "Download the captions from this video: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
-### Example 3: Clean Existing VTT File
+### Example 2: Clean Existing VTT File
 
 Ask Claude:
 > "Clean this VTT file: H:\\MCP\\captions-dl\\video.vtt"
 
-### Example 4: Health Check
+### Example 3: Health Check
 
 Ask Claude:
 > "Run a health check on the YouTube transcripts server"
