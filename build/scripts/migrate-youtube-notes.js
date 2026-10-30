@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import { createHash } from 'crypto';
 import { basename, extname, join } from 'path';
+import { buildCanonicalFilename } from '../file-manager.js';
 export const VAULT_ROOT = '/home/jandal/Documents/Obsidian/METJM';
 export const MEDIA_YOUTUBE_DIR = join(VAULT_ROOT, 'Media/YouTube');
 export const REFERENCE_YOUTUBE_DIR = join(VAULT_ROOT, 'Reference/YouTube');
@@ -18,6 +19,7 @@ const SUBTOPIC_KEYWORDS = [
     { folder: 'UI', keywords: ['ui-ux', 'ui/ux', 'user interface'] },
     { folder: 'Laptop', keywords: ['gaming laptop', 'rtx laptop'] },
     { folder: 'Guides', keywords: ['dataview guide', 'obsidian bases'] },
+    { folder: 'Equipment', keywords: ['mrs-1608', 'mrs 1608'] },
 ];
 const STOPWORDS = new Set(['the', 'and', 'for', 'from', 'with', 'this', 'that', 'how', 'what', 'why', 'are', 'you', 'your', 'about']);
 /** Normalize a title into a set of significant words for duplicate-cluster detection. */
@@ -47,9 +49,15 @@ export function matchSubtopic(title) {
     }
     return null;
 }
+/**
+ * Shared "YYYY-MM-DD(_HHMM)?" filename-date-prefix pattern. A single source of truth for
+ * both parseFilenameDatePrefix (extracts the date) and titleFromFilename (strips the prefix),
+ * so the two can't silently drift out of sync with each other.
+ */
+const FILENAME_DATE_PREFIX = /^(\d{4})-(\d{2})-(\d{2})[_-](?:(\d{2})(\d{2}))?/;
 /** Extract a leading YYYY-MM-DD(_HHMM)? date prefix from a filename, when present and parseable. */
 export function parseFilenameDatePrefix(filename) {
-    const match = filename.match(/^(\d{4})-(\d{2})-(\d{2})[_-](?:(\d{2})(\d{2}))?/);
+    const match = filename.match(FILENAME_DATE_PREFIX);
     if (!match)
         return null;
     const [, y, m, d, hh, mm] = match;
@@ -65,26 +73,13 @@ export function parseFrontmatterCreatedDate(content) {
     const date = new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm));
     return Number.isNaN(date.getTime()) ? null : date;
 }
-export function kebabCase(title) {
-    return title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60)
-        .replace(/-+$/g, '');
-}
-function pad(n) {
-    return String(n).padStart(2, '0');
-}
-export function buildCanonicalFilename(date, title) {
-    const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-    const timePart = `${pad(date.getHours())}${pad(date.getMinutes())}`;
-    return `${datePart}_${timePart}-${kebabCase(title) || 'video'}.md`;
-}
 /** Derive a display title from a filename (strips date prefix/extension, de-slugs). */
 export function titleFromFilename(filename) {
     let name = filename.replace(/\.(md|txt)$/i, '');
-    name = name.replace(/^\d{4}-\d{2}-\d{2}[_-](?:\d{4}-)?/, '');
+    const dateMatch = name.match(FILENAME_DATE_PREFIX);
+    if (dateMatch) {
+        name = name.slice(dateMatch[0].length);
+    }
     name = name.replace(/[_-]+/g, ' ').trim();
     return name;
 }
@@ -164,28 +159,28 @@ export function computeManifest(files) {
 }
 async function scanDirectory(dir) {
     const names = await fs.readdir(dir);
-    const files = [];
-    for (const filename of names) {
+    const files = await Promise.all(names.map(async (filename) => {
         const path = join(dir, filename);
         const stat = await fs.stat(path);
         if (!stat.isFile())
-            continue;
+            return null;
         const content = filename.toLowerCase().endsWith('.md') || filename.toLowerCase().endsWith('.txt')
             ? await fs.readFile(path, 'utf-8')
             : '';
-        files.push({ path, filename, content, mtime: stat.mtime });
-    }
-    return files;
+        return { path, filename, content, mtime: stat.mtime };
+    }));
+    return files.filter((f) => f !== null);
 }
 export async function buildManifestFromVault() {
-    const mediaFiles = await scanDirectory(MEDIA_YOUTUBE_DIR);
-    let referenceFiles = [];
-    try {
-        referenceFiles = await scanDirectory(REFERENCE_YOUTUBE_DIR);
-    }
-    catch {
-        // Reference/YouTube/ may not exist yet on a fresh vault; treat as empty.
-    }
+    const [mediaResult, referenceResult] = await Promise.allSettled([
+        scanDirectory(MEDIA_YOUTUBE_DIR),
+        scanDirectory(REFERENCE_YOUTUBE_DIR),
+    ]);
+    if (mediaResult.status === 'rejected')
+        throw mediaResult.reason;
+    const mediaFiles = mediaResult.value;
+    // Reference/YouTube/ may not exist yet on a fresh vault; treat that as empty.
+    const referenceFiles = referenceResult.status === 'fulfilled' ? referenceResult.value : [];
     return computeManifest([...mediaFiles, ...referenceFiles]);
 }
 async function hashFile(path) {
@@ -220,10 +215,7 @@ async function main() {
         return;
     }
     const existing = JSON.parse(await fs.readFile(REPORT_PATH, 'utf-8'));
-    const log = [];
-    for (const entry of existing.entries) {
-        log.push(await applyEntry(entry));
-    }
+    const log = await Promise.all(existing.entries.map(applyEntry));
     await fs.writeFile(REPORT_PATH, JSON.stringify({ mode: 'applied', entries: log }, null, 2), 'utf-8');
     const failed = log.filter(l => l.outcome === 'failed').length;
     console.log(`Migration applied: ${log.length - failed} moved, ${failed} failed. Log written to ${REPORT_PATH}.`);

@@ -28,8 +28,6 @@ export declare function matchSubtopic(title: string): string | null;
 export declare function parseFilenameDatePrefix(filename: string): Date | null;
 /** Extract the `created:` frontmatter date, when present and parseable (format YYYY-MM-DD-HH:MM). */
 export declare function parseFrontmatterCreatedDate(content: string): Date | null;
-export declare function kebabCase(title: string): string;
-export declare function buildCanonicalFilename(date: Date, title: string): string;
 /** Derive a display title from a filename (strips date prefix/extension, de-slugs). */
 export declare function titleFromFilename(filename: string): string;
 /** Resolve a target path against already-used paths, appending a disambiguating suffix on collision. */

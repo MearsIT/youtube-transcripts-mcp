@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { downloadYouTubeCaptions } from "./youtube-downloader.js";
 import { cleanVttFile, joinCaptions, getCaptionStats } from "./caption-cleaner.js";
-import { saveToFilesystem, createTimestampedFilename } from "./file-manager.js";
+import { saveToFilesystem, createTimestampedFilename, buildCanonicalFilename } from "./file-manager.js";
 import { extractSkillInstructions } from "./skill-extractor.js";
 /**
  * Register YouTube caption processing tools
@@ -281,17 +281,7 @@ Your formatted transcript has been saved to your Obsidian folder!`
  * Build suggested note filename: YYYY-MM-DD_HHMM-<kebab-title>.md (local time)
  */
 function buildSuggestedNoteFilename(title) {
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    const time = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-    const kebab = title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60)
-        .replace(/-+$/g, '');
-    return `${date}_${time}-${kebab || 'video'}.md`;
+    return buildCanonicalFilename(new Date(), title);
 }
 /**
  * Extract video title from VTT filename

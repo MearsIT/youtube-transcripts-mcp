@@ -81,4 +81,26 @@ export function createTimestampedFilename(baseFilename, extension = 'txt') {
     const cleanBase = baseFilename.replace(/[^\w\s-]/g, '').trim();
     return `${cleanBase}_${timestamp}.${extension}`;
 }
+/**
+ * Kebab-case a title for use in a filename (lowercase, hyphenated, max 60 chars).
+ */
+export function kebabCase(title) {
+    return title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60)
+        .replace(/-+$/g, '');
+}
+function pad(n) {
+    return String(n).padStart(2, '0');
+}
+/**
+ * Build the canonical `YYYY-MM-DD_HHMM-kebab-title.md` note filename for a given date/title.
+ */
+export function buildCanonicalFilename(date, title) {
+    const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const timePart = `${pad(date.getHours())}${pad(date.getMinutes())}`;
+    return `${datePart}_${timePart}-${kebabCase(title) || 'video'}.md`;
+}
 //# sourceMappingURL=file-manager.js.map

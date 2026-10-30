@@ -141,6 +141,10 @@ describe('titleFromFilename', () => {
   it('strips a date prefix and de-slugs the remainder', () => {
     expect(titleFromFilename('2026-03-23_DaVinci_Resolve_API_Projects_Timelines.md')).toBe('DaVinci Resolve API Projects Timelines');
   });
+
+  it('strips a date+time prefix separated by underscores without leaking the time into the title', () => {
+    expect(titleFromFilename('2026-09-02_1639_jacob-collier-cult-of-genius.md')).toBe('jacob collier cult of genius');
+  });
 });
 
 describe('applyEntry', () => {
