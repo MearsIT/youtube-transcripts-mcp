@@ -104,14 +104,6 @@ Personal observations and connections.
 - [[Related topic]]
 \`\`\`
 
----
-
-## Common Folder Locations
-
-| Note type | Folder |
-|---|---|
-| \`reference\` | \`Reference/\` |
-| \`youtube-transcript\` | \`Media/YouTube/\` |
 `;
 
 const MALFORMED_SKILL_CONTENT = `---
@@ -140,7 +132,7 @@ describe('getDefaultSkillPath', () => {
 });
 
 describe('extractInstructionsFromSkill', () => {
-  it('extracts frontmatter template, field rules, youtube-transcript template, naming, and folder from valid skill content', () => {
+  it('extracts frontmatter template, field rules, youtube-transcript template, naming, and folder guidance from valid skill content with no folder table', () => {
     const result = extractInstructionsFromSkill(SAMPLE_SKILL_CONTENT);
 
     expect(result).not.toBeNull();
@@ -151,14 +143,18 @@ describe('extractInstructionsFromSkill', () => {
     expect(result).toContain('## Main Content');
     expect(result).toContain('## Key Quotes');
     expect(result).toContain('## Insights/Notes');
-    expect(result).toContain('**Target Folder**: Media/YouTube/');
+    expect(result).toContain('**Target Folder**: Read `_vault-structure.md`');
+    expect(result).toContain('Reference/YouTube/');
+    expect(result).not.toContain('Media/YouTube');
   });
 
-  it('prepends the no-questions automation header', () => {
+  it('prepends the no-questions automation header, filename-exact but not folder-exact', () => {
     const result = extractInstructionsFromSkill(SAMPLE_SKILL_CONTENT);
 
     expect(result).toMatch(/^Create the note immediately\. Do NOT ask the user any questions/);
     expect(result).toContain('Do NOT use any other skill or template');
+    expect(result).toContain('Use the suggested filename provided in the tool response EXACTLY as given');
+    expect(result).not.toContain('target directory');
   });
 
   it('injects the date-prefix naming rule instead of the skill naming line', () => {
@@ -185,7 +181,7 @@ describe('extractSkillInstructions', () => {
     const result = await extractSkillInstructions(skillPath);
 
     expect(result).toContain('title: [Note Title]');
-    expect(result).toContain('**Target Folder**: Media/YouTube/');
+    expect(result).toContain('**Target Folder**: Read `_vault-structure.md`');
     expect(result).not.toBe(FALLBACK_NOTE_INSTRUCTIONS);
   });
 
@@ -225,7 +221,8 @@ describe('FALLBACK_NOTE_INSTRUCTIONS', () => {
     expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Main Content');
     expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Key Quotes');
     expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('## Related Notes');
-    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('Media/YouTube/');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).toContain('Reference/YouTube/');
+    expect(FALLBACK_NOTE_INSTRUCTIONS).not.toContain('Media/YouTube');
   });
 
   it('contains the date-prefix naming rule and no-questions directive', () => {

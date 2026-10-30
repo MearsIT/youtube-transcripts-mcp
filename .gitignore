@@ -8,6 +8,9 @@ node_modules/
 *.log
 *.tmp
 
+# Migration script runtime output (contains vault file paths, not committed)
+migration-report.json
+
 # OS files
 .DS_Store
 Thumbs.db

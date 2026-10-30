@@ -16,4 +16,12 @@ export declare function generateSummary(text: string): {
  * Create a timestamped filename
  */
 export declare function createTimestampedFilename(baseFilename: string, extension?: string): string;
+/**
+ * Kebab-case a title for use in a filename (lowercase, hyphenated, max 60 chars).
+ */
+export declare function kebabCase(title: string): string;
+/**
+ * Build the canonical `YYYY-MM-DD_HHMM-kebab-title.md` note filename for a given date/title.
+ */
+export declare function buildCanonicalFilename(date: Date, title: string): string;
 //# sourceMappingURL=file-manager.d.ts.map

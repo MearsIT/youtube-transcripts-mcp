@@ -12,13 +12,22 @@ const logger = {
 /**
  * Directive prepended to all instruction bundles: the note must be created
  * fully automatically, with no questions, confirmation, or other skills.
+ * Mandates the filename only — the folder is decided by FOLDER_GUIDANCE below,
+ * not dictated here, so a topic-matched Reference/<Topic>/ subfolder can win.
  */
-const AUTOMATION_HEADER = `Create the note immediately. Do NOT ask the user any questions or seek confirmation. Do NOT use any other skill or template. Use the target directory and suggested filename provided in the tool response EXACTLY as given — the filename MUST keep its YYYY-MM-DD_HHMM date-time prefix. Do NOT rename, reformat, or shorten the filename.`;
+const AUTOMATION_HEADER = `Create the note immediately. Do NOT ask the user any questions or seek confirmation. Do NOT use any other skill or template. Use the suggested filename provided in the tool response EXACTLY as given — it MUST keep its YYYY-MM-DD_HHMM date-time prefix. Do NOT rename, reformat, or shorten the filename. Decide the folder using the instructions below, not from any directory named elsewhere in the tool response.`;
 
 /**
  * Naming rule injected in place of the skill's own (no-date-prefix) rule.
  */
 const NAMING_RULE = `**File Naming**: \`YYYY-MM-DD_HHMM-kebab-case-title.md\` (local time, lowercase-hyphenated title, date+time prefix required) — e.g. \`2026-09-02_1639_jacob-collier-cult-of-genius.md\``;
+
+/**
+ * Folder guidance: fixed, not extracted from SKILL.md. The skill's own folder-location
+ * data moved to the per-vault _vault-structure.md file in skill v3.2.0, so this defers
+ * to that file instead of depending on skill text that may not exist.
+ */
+const FOLDER_GUIDANCE = `**Target Folder**: Read \`_vault-structure.md\` at the vault root. Use the matching \`Reference/<Topic>/\` subfolder when the video's subject clearly fits an existing one; otherwise use \`Reference/YouTube/\`.`;
 
 /**
  * Embedded fallback instructions, based on obsidian-note-creator SKILL.md v3.1.0
@@ -78,7 +87,7 @@ Personal observations and connections.
 - [[Similar content]]
 
 ${NAMING_RULE}
-**Target Folder**: Media/YouTube/`;
+${FOLDER_GUIDANCE}`;
 
 /**
  * Default skill file location
@@ -112,10 +121,9 @@ export function extractInstructionsFromSkill(skillContent: string): string | nul
   // 4. Naming rule: injected (the skill's own rule forbids date prefixes, which we require)
   sections.push(NAMING_RULE);
 
-  // 5. youtube-transcript folder location (row from Common Folder Locations table)
-  const folderRow = skillContent.match(/^\| `youtube-transcript` \| (`[^`]+`)/m);
-  if (!folderRow) return null;
-  sections.push(`**Target Folder**: ${folderRow[1].replace(/`/g, '')}`);
+  // 5. Folder guidance: fixed instruction, not extracted — the skill moved folder-location
+  // data to _vault-structure.md (v3.2.0), so SKILL.md has no folder table to read.
+  sections.push(FOLDER_GUIDANCE);
 
   return `${AUTOMATION_HEADER}\n\nFormat this YouTube transcript as an Obsidian youtube-transcript note.\n\n${sections.join('\n\n')}`;
 }

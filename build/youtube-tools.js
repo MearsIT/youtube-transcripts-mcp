@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { downloadYouTubeCaptions } from "./youtube-downloader.js";
 import { cleanVttFile, joinCaptions, getCaptionStats } from "./caption-cleaner.js";
-import { saveToFilesystem, createTimestampedFilename } from "./file-manager.js";
+import { saveToFilesystem, createTimestampedFilename, buildCanonicalFilename } from "./file-manager.js";
 import { extractSkillInstructions } from "./skill-extractor.js";
 /**
  * Register YouTube caption processing tools
@@ -112,10 +112,10 @@ Please ensure:
         description: "Download YouTube captions and bundle with formatting instructions for Obsidian youtube-transcript note creation",
         inputSchema: {
             url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
-            outputDir: z.string().optional().describe("Note output directory (default: /home/jandal/Documents/Obsidian/METJM/Media/YouTube)")
+            outputDir: z.string().optional().describe("Default/fallback note output directory, used only when no better Reference/<Topic>/ subfolder fits (default: /home/jandal/Documents/Obsidian/METJM/Reference/YouTube)")
         }
     }, async (args) => {
-        const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Media/YouTube" } = args;
+        const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Reference/YouTube" } = args;
         const requestId = Math.random().toString(36).substring(2, 15);
         try {
             logger.info("Starting YouTube summary note creation", { requestId, url, outputDir });
@@ -166,8 +166,8 @@ Please ensure:
 **Instructions for Claude:**
 ${skillInstructions}
 
-**Target Directory:** ${outputDir}
-**Required Note Path (save the note to EXACTLY this path, do not rename):** ${outputDir.replace(/\/+$/, '')}/${suggestedFilename}
+**Default/Fallback Target Directory:** ${outputDir} (use only when no better Reference/<Topic>/ subfolder fits, per the folder-guidance instruction above)
+**Required Filename (use EXACTLY this filename, do not rename):** ${suggestedFilename}
 
 ---
 
@@ -281,17 +281,7 @@ Your formatted transcript has been saved to your Obsidian folder!`
  * Build suggested note filename: YYYY-MM-DD_HHMM-<kebab-title>.md (local time)
  */
 function buildSuggestedNoteFilename(title) {
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    const time = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-    const kebab = title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60)
-        .replace(/-+$/g, '');
-    return `${date}_${time}-${kebab || 'video'}.md`;
+    return buildCanonicalFilename(new Date(), title);
 }
 /**
  * Extract video title from VTT filename
