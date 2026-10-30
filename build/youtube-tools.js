@@ -112,10 +112,10 @@ Please ensure:
         description: "Download YouTube captions and bundle with formatting instructions for Obsidian youtube-transcript note creation",
         inputSchema: {
             url: z.string().describe("YouTube video URL (supports standard, short, embed, and Shorts URLs)"),
-            outputDir: z.string().optional().describe("Note output directory (default: /home/jandal/Documents/Obsidian/METJM/Media/YouTube)")
+            outputDir: z.string().optional().describe("Default/fallback note output directory, used only when no better Reference/<Topic>/ subfolder fits (default: /home/jandal/Documents/Obsidian/METJM/Reference/YouTube)")
         }
     }, async (args) => {
-        const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Media/YouTube" } = args;
+        const { url, outputDir = "/home/jandal/Documents/Obsidian/METJM/Reference/YouTube" } = args;
         const requestId = Math.random().toString(36).substring(2, 15);
         try {
             logger.info("Starting YouTube summary note creation", { requestId, url, outputDir });
@@ -166,8 +166,8 @@ Please ensure:
 **Instructions for Claude:**
 ${skillInstructions}
 
-**Target Directory:** ${outputDir}
-**Required Note Path (save the note to EXACTLY this path, do not rename):** ${outputDir.replace(/\/+$/, '')}/${suggestedFilename}
+**Default/Fallback Target Directory:** ${outputDir} (use only when no better Reference/<Topic>/ subfolder fits, per the folder-guidance instruction above)
+**Required Filename (use EXACTLY this filename, do not rename):** ${suggestedFilename}
 
 ---
 
