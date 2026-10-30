@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs';
+import { promises as fs, constants as fsConstants } from 'fs';
 import { createHash } from 'crypto';
 import { basename, extname, join } from 'path';
 import { buildCanonicalFilename } from '../file-manager.js';
@@ -13,9 +13,9 @@ export const REPORT_PATH = join(process.cwd(), 'migration-report.json');
  * misclassify unrelated videos, so each keyword is distinctive to its topic.
  */
 const SUBTOPIC_KEYWORDS = [
-    { folder: 'Technology', keywords: ['davinci', 'resolve', 'claude code', 'claude', 'openai', 'omarchy', 'programmer', 'programming', 'ai-', 'ai ', 'rust', 'developer', 'coding', 'software engineer', 'reverse engineering'] },
+    { folder: 'Technology', keywords: ['davinci resolve', 'claude code', 'claude', 'openai', 'omarchy', 'programmer', 'programming', 'ai-', 'ai ', 'rust', 'developer', 'coding', 'software engineer', 'reverse engineering'] },
     { folder: 'Finance', keywords: ['council tax', 'mortgage', 'pension', 'wealth rant', 'property tax', 'pay yourself', 'tax strategy', 'tax adviser', 'hmrc'] },
-    { folder: 'DND', keywords: ['dungeon', 'd&d', 'dnd session', 'campaign'] },
+    { folder: 'DND', keywords: ['dungeon', 'd&d', 'dnd session', 'dnd campaign', 'd&d campaign'] },
     { folder: 'UI', keywords: ['ui-ux', 'ui/ux', 'user interface'] },
     { folder: 'Laptop', keywords: ['gaming laptop', 'rtx laptop'] },
     { folder: 'Guides', keywords: ['dataview guide', 'obsidian bases'] },
@@ -40,11 +40,22 @@ export function titlesAreDuplicates(a, b) {
     const jaccard = shared.length / union.size;
     return jaccard >= 0.25;
 }
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+/**
+ * Word-boundary match for a keyword against a lowercased title. Plain substring matching would
+ * match "rust" inside "frustrating" or "resolve" inside "I resolve to..."; \b anchors the keyword
+ * to whole-word occurrences so a short, common-looking keyword can't fire on an unrelated word.
+ */
+function containsKeyword(lower, keyword) {
+    return new RegExp(`\\b${escapeRegExp(keyword)}\\b`).test(lower);
+}
 /** Conservative topic match against existing Reference/<Topic>/ subfolders only; null means no clear match. */
 export function matchSubtopic(title) {
     const lower = title.toLowerCase();
     for (const { folder, keywords } of SUBTOPIC_KEYWORDS) {
-        if (keywords.some(k => lower.includes(k)))
+        if (keywords.some(k => containsKeyword(lower, k)))
             return folder;
     }
     return null;
@@ -105,14 +116,18 @@ export function resolveCollisionPath(targetPath, usedPaths) {
  * so it is unit-testable against synthetic RawFileInfo without a real vault.
  */
 export function computeManifest(files) {
-    const nonTxt = files.filter(f => !f.filename.toLowerCase().endsWith('.txt'));
+    // Only .md files are treated as notes and .txt files as stray transcripts (R8); any other
+    // extension (image, backup, dotfile, ...) is left out of the manifest entirely rather than
+    // silently renamed to .md -- scanDirectory only reads .md/.txt content, so anything else
+    // reaching here has no note content to classify.
+    const notes = files.filter(f => f.filename.toLowerCase().endsWith('.md'));
     const strayTxt = files.filter(f => f.filename.toLowerCase().endsWith('.txt'));
-    const titles = nonTxt.map(f => titleFromFilename(f.filename));
+    const titles = notes.map(f => titleFromFilename(f.filename));
     const wordSets = titles.map(normalizeTitleWords);
     const clusterOf = new Map();
     let nextClusterId = 1;
-    for (let i = 0; i < nonTxt.length; i++) {
-        for (let j = i + 1; j < nonTxt.length; j++) {
+    for (let i = 0; i < notes.length; i++) {
+        for (let j = i + 1; j < notes.length; j++) {
             if (titlesAreDuplicates(wordSets[i], wordSets[j])) {
                 const existing = clusterOf.get(i) ?? clusterOf.get(j);
                 const clusterId = existing ?? nextClusterId++;
@@ -123,8 +138,8 @@ export function computeManifest(files) {
     }
     const usedPaths = new Set();
     const entries = [];
-    for (let i = 0; i < nonTxt.length; i++) {
-        const file = nonTxt[i];
+    for (let i = 0; i < notes.length; i++) {
+        const file = notes[i];
         const title = titles[i];
         const filenameDate = parseFilenameDatePrefix(file.filename);
         const frontmatterDate = filenameDate ? null : parseFrontmatterCreatedDate(file.content);
@@ -187,12 +202,25 @@ async function hashFile(path) {
     const content = await fs.readFile(path);
     return createHash('sha256').update(content).digest('hex');
 }
-/** Copy-verify-delete a single entry (KTD4): never deletes the source until the copy is proven identical. */
+/**
+ * Copy-verify-delete a single entry (KTD4): never deletes the source until the copy is proven
+ * identical. COPYFILE_EXCL makes the copy itself fail (EEXIST) if an unrelated file already sits
+ * at the target path, rather than silently overwriting it -- collision detection during manifest
+ * generation only tracks paths proposed within the same run, never pre-existing files on disk.
+ */
 export async function applyEntry(entry) {
     const targetPath = join(entry.proposedFolder, entry.proposedFilename);
     try {
         await fs.mkdir(entry.proposedFolder, { recursive: true });
-        await fs.copyFile(entry.sourcePath, targetPath);
+        try {
+            await fs.copyFile(entry.sourcePath, targetPath, fsConstants.COPYFILE_EXCL);
+        }
+        catch (copyError) {
+            if (copyError.code === 'EEXIST') {
+                return { ...entry, outcome: 'failed', error: `target path already exists; refusing to overwrite: ${targetPath}` };
+            }
+            throw copyError;
+        }
         const sourceHash = await hashFile(entry.sourcePath);
         const targetHash = await hashFile(targetPath);
         if (sourceHash !== targetHash) {

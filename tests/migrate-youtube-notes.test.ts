@@ -28,6 +28,14 @@ describe('matchSubtopic', () => {
   it('returns null when no subtopic keyword is present', () => {
     expect(matchSubtopic('Why Younger People Are Getting Shingles')).toBeNull();
   });
+
+  it('does not match a keyword that only occurs as a substring of an unrelated word', () => {
+    expect(matchSubtopic('Why Everything Feels So Frustrating Lately')).toBeNull();
+  });
+
+  it('does not match a generic word that is ambiguous outside its intended topic', () => {
+    expect(matchSubtopic('Local Election Campaign Explained')).toBeNull();
+  });
 });
 
 describe('titlesAreDuplicates / normalizeTitleWords', () => {
@@ -121,19 +129,32 @@ describe('computeManifest', () => {
     expect(new Set(clusterIds).size).toBe(1);
   });
 
-  it('gives a disambiguating suffix to the second of two entries that resolve to the same target', () => {
+  it('gives a disambiguating suffix to the second of two entries that compute the identical target path', () => {
+    // Same date+time prefix AND the same de-slugged title, so both genuinely compute the same
+    // target path through computeManifest's own buildCanonicalFilename call -- not just two
+    // files whose titles happen to differ (which would never collide in the first place).
     const sameMinute = new Date('2026-09-02T16:39:00');
     const entries = computeManifest([
-      file('2026-09-02_1639_jacob-collier-cult-of-genius.md', '', sameMinute),
-      file('2026-09-02_1639_jacob-collier-cult-of-genius-copy.md', '', sameMinute),
+      file('2026-09-02_1639_my-video.md', '', sameMinute),
+      file('2026-09-02_1639_My_Video.md', '', sameMinute),
     ]);
-    expect(entries[0].proposedFilename).not.toBe(entries[1].proposedFilename);
+    expect(entries[0].proposedFilename).toBe('2026-09-02_1639-my-video.md');
+    expect(entries[1].proposedFilename).toBe('2026-09-02_1639-my-video-2.md');
   });
 
   it('routes a stray .txt transcript file to Transcripts/yt, not a Reference folder', () => {
     const entries = computeManifest([file('10 British Box Office Bombs zSKQl1IBXx4_2026-02-04T12-00-19.txt')]);
     expect(entries[0].isStrayTxt).toBe(true);
     expect(entries[0].proposedFolder).toMatch(/Transcripts\/yt$/);
+  });
+
+  it('excludes a non-.md, non-.txt file instead of silently renaming it into a note', () => {
+    const entries = computeManifest([
+      file('2026-09-02_1639_jacob-collier-cult-of-genius.md'),
+      file('screenshot.png'),
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries.some(e => e.sourcePath.endsWith('screenshot.png'))).toBe(false);
   });
 });
 
@@ -204,5 +225,22 @@ describe('applyEntry', () => {
     expect(result.error).toMatch(/hash mismatch/);
     const sourceStillThere = await fs.readFile(sourcePath, 'utf-8');
     expect(sourceStillThere).toBe('original content');
+  });
+
+  it('refuses to overwrite a pre-existing, unrelated file already at the target path', async () => {
+    const sourcePath = join(tempDir, 'source-collision.md');
+    await fs.writeFile(sourcePath, 'new content', 'utf-8');
+    const targetFolder = join(tempDir, 'target-collision');
+    await fs.mkdir(targetFolder, { recursive: true });
+    const targetPath = join(targetFolder, 'moved.md');
+    await fs.writeFile(targetPath, 'pre-existing unrelated content', 'utf-8');
+    const entry = makeEntry(sourcePath, targetFolder, 'moved.md');
+
+    const result = await applyEntry(entry);
+
+    expect(result.outcome).toBe('failed');
+    expect(result.error).toMatch(/already exists/);
+    expect(await fs.readFile(targetPath, 'utf-8')).toBe('pre-existing unrelated content');
+    expect(await fs.readFile(sourcePath, 'utf-8')).toBe('new content');
   });
 });

@@ -42,6 +42,11 @@ export interface MigrationLogEntry extends ManifestEntry {
     outcome: 'moved' | 'failed';
     error?: string;
 }
-/** Copy-verify-delete a single entry (KTD4): never deletes the source until the copy is proven identical. */
+/**
+ * Copy-verify-delete a single entry (KTD4): never deletes the source until the copy is proven
+ * identical. COPYFILE_EXCL makes the copy itself fail (EEXIST) if an unrelated file already sits
+ * at the target path, rather than silently overwriting it -- collision detection during manifest
+ * generation only tracks paths proposed within the same run, never pre-existing files on disk.
+ */
 export declare function applyEntry(entry: ManifestEntry): Promise<MigrationLogEntry>;
 //# sourceMappingURL=migrate-youtube-notes.d.ts.map
